@@ -1,3 +1,10 @@
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    projectionMatrix=perspectiveMat(60,canvas.width/canvas.height,0.1,1000)
+}
+
 // Fetches the canvas element
 let canvas = document.getElementById('canvas');
 
