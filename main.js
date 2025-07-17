@@ -1,0 +1,547 @@
+// Fetches the canvas element
+let canvas = document.getElementById('canvas');
+
+// The webgl API
+let gl = canvas.getContext('webgl2');
+
+// If WebGL2 is not supported
+if (!gl) {
+    alert('Your browser does not support WebGL2!');
+}
+
+//sets the viewport. the first 2 params are the x and y offset values of the viewport from the lower left corner. the last 2 are the width and height
+//in webgl, the up direction are positive y values
+//canvas.width = window.innerWidth;
+//canvas.height = window.innerHeight;
+//gl.viewport(0, 0, canvas.width, canvas.height);
+
+//a function that returns a webglprogram object given the shader text
+function createProgram(vshText, fshText) {
+
+    //these lines create and compile the shaders
+    vsh = gl.createShader(gl.VERTEX_SHADER)
+    fsh = gl.createShader(gl.FRAGMENT_SHADER)
+    gl.shaderSource(vsh, vshText)
+    gl.shaderSource(fsh, fshText)
+    gl.compileShader(vsh)
+    gl.compileShader(fsh)
+
+    //these lines create the program and attaches the shaders
+    let p = gl.createProgram()
+    gl.attachShader(p, vsh)
+    gl.attachShader(p, fsh)
+    gl.linkProgram(p)
+
+    return p
+}
+
+let vertexShaderCode = `#version 300 es
+
+        //this line tells the shader what the precision is. This is needed in both the shaders. 'lowp' means low, 'mediump' means medium, and 'highp' is high.
+        precision mediump float;
+        
+        //this is the position of the vertices, and will be passed in from the buffers later
+        in vec3 vertPos;
+
+        in vec3 vertColor; 
+        out vec3 pixelColor; 
+
+        uniform mat4 modelMatrix; 
+        
+        void main(){
+            pixelColor=vertColor;
+            
+            //gl_Position is a vec4. Your vertex shader needs to do math to find out where the vertex is. Because this is a 2D program, just put the vertex position at where it is passed in, without any changes.
+            
+            gl_Position=modelMatrix*vec4(vertPos,1);
+        }
+    `
+
+let fragmentShaderCode = `#version 300 es
+        
+        precision mediump float;
+        
+        in vec3 pixelColor; 
+        out vec4 fragColor;
+        
+        void main(){
+        
+            //We set the color here. colors are in RGBA in the range of 0-1
+            //this makes all the computed pixels green
+            fragColor=vec4(pixelColor,1);
+        }
+    `
+
+// Create the program with the fetched shader codes
+let program = createProgram(vertexShaderCode, fragmentShaderCode);
+
+// Use the created program
+gl.useProgram(program);
+
+/*//the vertices of the triangle. the coords are in the range of -1 to 1, for both the axes. canvas width and height don't matter
+//the vertex positions are stored together. in this case, the format is x1,y1,x2,y2,x3,y3
+let verts = [
+    -0.5, 0.5, -0.5, 1, 0, 0,
+    -0.5, -0.5, -0.5, 0, 1, 0,
+    0.5, -0.5, -0.5, 0, 0, 1,
+    0.5, 0.5, -0.5, 1, 1, 0
+]
+
+//each integer references a specific vertex from the "verts" array
+let index = [
+    0, 1, 2,
+    0, 2, 3
+]*/
+
+let verts=[
+
+//front side
+-0.5,0.5,-0.5,  1,0,0,
+-0.5,-0.5,-0.5,  0.5,0,0,
+0.5,-0.5,-0.5,  0,0.5,0.5,
+0.5,0.5,-0.5,  0.3,0.3,0.3,
+
+//back side
+-0.5,0.5,0.5,  0,1,0,
+-0.5,-0.5,0.5,  0,0.5,0,
+0.5,-0.5,0.5,  0.5,0,0.5,
+0.5,0.5,0.5,  0.3,0.3,0.3,
+
+//top side
+-0.5,0.5,0.5,  0,0,1,
+-0.5,0.5,-0.5,  0,0,0.5,
+0.5,0.5,-0.5,  0.5,0.5,0,
+0.5,0.5,0.5,  0.3,0.3,0.3,
+
+//bottom side
+-0.5,-0.5,0.5,  1,1,0,
+-0.5,-0.5,-0.5,  0.5,0.5,0,
+0.5,-0.5,-0.5,  0,0,0.5,
+0.5,-0.5,0.5,  0.3,0.3,0.3,
+
+//left side
+-0.5,0.5,-0.5,  0,1,1,
+-0.5,-0.5,-0.5,  0,0.5,0.5,
+-0.5,-0.5,0.5,  0.5,0,0,
+-0.5,0.5,0.5,  0.3,0.3,0.3,
+
+//right side
+0.5,0.5,-0.5,  1,0,1,
+0.5,-0.5,-0.5,  0.5,0,0.5,
+0.5,-0.5,0.5,  0,0.5,0,
+0.5,0.5,0.5,  0.3,0.3,0.3,
+]
+
+let index=[
+
+//front side
+2,1,0,
+3,2,0,
+
+//back side
+4,5,6,
+4,6,7,
+
+//top side
+10,9,8,
+11,10,8,
+
+//bottom side
+12,13,14,
+12,14,15,
+
+//left side
+16,17,18,
+16,18,19,
+
+//right side
+22,21,20,
+23,22,20,
+]
+
+let indexBuffer = gl.createBuffer()
+
+//tells webgl that we are performing stuff on this specific buffer
+//gl.ELEMENT_ARRAY_BUFFER indicates that this buffer is for index data
+gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer)
+
+//sets data in the buffer using the mesh. the inputted data must be a Uint16Array
+gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(index), gl.STATIC_DRAW)
+
+let vertBuffer = gl.createBuffer();
+gl.bindBuffer(gl.ARRAY_BUFFER, vertBuffer);
+gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW);
+
+//gets the location of the attribute from the WebGLProgram
+//the name(here it's "vertPos") must match what's defined in the vertex shader(the shader states "in vec2 vertPos;")
+let vertPosLocation = gl.getAttribLocation(program, 'vertPos')
+
+//enable the vertex attribute
+gl.enableVertexAttribArray(vertPosLocation)
+
+let vertColorLocation = gl.getAttribLocation(program, 'vertColor')
+gl.enableVertexAttribArray(vertColorLocation)
+
+let bpv = 24
+
+//tells webgl how to get values out of the supplied buffer
+gl.vertexAttribPointer(vertPosLocation, 3, gl.FLOAT, gl.FALSE, bpv, 0)
+gl.vertexAttribPointer(vertColorLocation, 3, gl.FLOAT, gl.FALSE, bpv, 12)
+
+let modelMatrixLocation = gl.getUniformLocation(program, 'modelMatrix');
+
+function mult4x4Mat(out, a, b) {
+
+    let a00 = a[0],
+        a01 = a[1],
+        a02 = a[2],
+        a03 = a[3];
+
+    let a10 = a[4],
+        a11 = a[5],
+        a12 = a[6],
+        a13 = a[7];
+
+    let a20 = a[8],
+        a21 = a[9],
+        a22 = a[10],
+        a23 = a[11];
+
+    let a30 = a[12],
+        a31 = a[13],
+        a32 = a[14],
+        a33 = a[15];
+
+    let b0 = b[0],
+        b1 = b[1],
+        b2 = b[2],
+        b3 = b[3];
+
+    out[0] = b0 * a00 + b1 * a10 + b2 * a20 + b3 * a30;
+    out[1] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
+    out[2] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
+    out[3] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
+
+    b0 = b[4];
+    b1 = b[5];
+    b2 = b[6];
+    b3 = b[7];
+
+    out[4] = b0 * a00 + b1 * a10 + b2 * a20 + b3 * a30;
+    out[5] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
+    out[6] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
+    out[7] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
+
+    b0 = b[8];
+    b1 = b[9];
+    b2 = b[10];
+    b3 = b[11];
+
+    out[8] = b0 * a00 + b1 * a10 + b2 * a20 + b3 * a30;
+    out[9] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
+    out[10] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
+    out[11] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
+
+    b0 = b[12];
+    b1 = b[13];
+    b2 = b[14];
+    b3 = b[15];
+
+    out[12] = b0 * a00 + b1 * a10 + b2 * a20 + b3 * a30;
+    out[13] = b0 * a01 + b1 * a11 + b2 * a21 + b3 * a31;
+    out[14] = b0 * a02 + b1 * a12 + b2 * a22 + b3 * a32;
+    out[15] = b0 * a03 + b1 * a13 + b2 * a23 + b3 * a33;
+
+    return out;
+}
+
+function translate4x4Mat(out, a, x, y, z) {
+
+    let a00, a01, a02, a03;
+    let a10, a11, a12, a13;
+    let a20, a21, a22, a23;
+
+    if (a === out) {
+
+        out[12] = a[0] * x + a[4] * y + a[8] * z + a[12];
+        out[13] = a[1] * x + a[5] * y + a[9] * z + a[13];
+        out[14] = a[2] * x + a[6] * y + a[10] * z + a[14];
+        out[15] = a[3] * x + a[7] * y + a[11] * z + a[15];
+
+    } else {
+
+        a00 = a[0];
+        a01 = a[1];
+        a02 = a[2];
+        a03 = a[3];
+        a10 = a[4];
+        a11 = a[5];
+        a12 = a[6];
+        a13 = a[7];
+        a20 = a[8];
+        a21 = a[9];
+        a22 = a[10];
+        a23 = a[11];
+        out[0] = a00;
+        out[1] = a01;
+        out[2] = a02;
+        out[3] = a03;
+        out[4] = a10;
+        out[5] = a11;
+        out[6] = a12;
+        out[7] = a13;
+        out[8] = a20;
+        out[9] = a21;
+        out[10] = a22;
+        out[11] = a23;
+        out[12] = a00 * x + a10 * y + a20 * z + a[12];
+        out[13] = a01 * x + a11 * y + a21 * z + a[13];
+        out[14] = a02 * x + a12 * y + a22 * z + a[14];
+        out[15] = a03 * x + a13 * y + a23 * z + a[15];
+
+    }
+
+    return out;
+}
+
+function rotateX4x4Mat(out, a, rad) {
+
+    let s = Math.sin(rad);
+    let c = Math.cos(rad);
+    let a10 = a[4];
+    let a11 = a[5];
+    let a12 = a[6];
+    let a13 = a[7];
+    let a20 = a[8];
+    let a21 = a[9];
+    let a22 = a[10];
+    let a23 = a[11];
+
+    if (a !== out) {
+
+        out[0] = a[0];
+        out[1] = a[1];
+        out[2] = a[2];
+        out[3] = a[3];
+        out[12] = a[12];
+        out[13] = a[13];
+        out[14] = a[14];
+        out[15] = a[15];
+    }
+
+    out[4] = a10 * c + a20 * s;
+    out[5] = a11 * c + a21 * s;
+    out[6] = a12 * c + a22 * s;
+    out[7] = a13 * c + a23 * s;
+    out[8] = a20 * c - a10 * s;
+    out[9] = a21 * c - a11 * s;
+    out[10] = a22 * c - a12 * s;
+    out[11] = a23 * c - a13 * s;
+
+    return out;
+}
+
+function rotateY4x4Mat(out, a, rad) {
+
+    let s = Math.sin(rad);
+    let c = Math.cos(rad);
+
+    let a00 = a[0];
+    let a01 = a[1];
+    let a02 = a[2];
+    let a03 = a[3];
+    let a20 = a[8];
+    let a21 = a[9];
+    let a22 = a[10];
+    let a23 = a[11];
+
+    if (a !== out) {
+
+        out[4] = a[4];
+        out[5] = a[5];
+        out[6] = a[6];
+        out[7] = a[7];
+        out[12] = a[12];
+        out[13] = a[13];
+        out[14] = a[14];
+        out[15] = a[15];
+    }
+
+    out[0] = a00 * c - a20 * s;
+    out[1] = a01 * c - a21 * s;
+    out[2] = a02 * c - a22 * s;
+    out[3] = a03 * c - a23 * s;
+    out[8] = a00 * s + a20 * c;
+    out[9] = a01 * s + a21 * c;
+    out[10] = a02 * s + a22 * c;
+    out[11] = a03 * s + a23 * c;
+
+    return out;
+}
+
+function rotateZ4x4Mat(out, a, rad) {
+
+    let s = Math.sin(rad);
+    let c = Math.cos(rad);
+
+    let a00 = a[0];
+    let a01 = a[1];
+    let a02 = a[2];
+    let a03 = a[3];
+    let a10 = a[4];
+    let a11 = a[5];
+    let a12 = a[6];
+    let a13 = a[7];
+
+    if (a !== out) {
+
+        out[8] = a[8];
+        out[9] = a[9];
+        out[10] = a[10];
+        out[11] = a[11];
+        out[12] = a[12];
+        out[13] = a[13];
+        out[14] = a[14];
+        out[15] = a[15];
+    }
+
+    out[0] = a00 * c + a10 * s;
+    out[1] = a01 * c + a11 * s;
+    out[2] = a02 * c + a12 * s;
+    out[3] = a03 * c + a13 * s;
+    out[4] = a10 * c - a00 * s;
+    out[5] = a11 * c - a01 * s;
+    out[6] = a12 * c - a02 * s;
+    out[7] = a13 * c - a03 * s;
+
+    return out;
+}
+
+function scale4x4Mat(out, a, x, y, z) {
+
+    out[0] = a[0] * x;
+    out[1] = a[1] * x;
+    out[2] = a[2] * x;
+    out[3] = a[3] * x;
+    out[4] = a[4] * y;
+    out[5] = a[5] * y;
+    out[6] = a[6] * y;
+    out[7] = a[7] * y;
+    out[8] = a[8] * z;
+    out[9] = a[9] * z;
+    out[10] = a[10] * z;
+    out[11] = a[11] * z;
+    out[12] = a[12];
+    out[13] = a[13];
+    out[14] = a[14];
+    out[15] = a[15];
+
+    return out;
+}
+
+
+/* let modelMatrix = new Float32Array([
+    1, 0, 0, 0,
+    0, 1, 0, 0,
+    0, 0, 1, 0,
+    0, 0, 0, 1
+]);
+
+let rx=0,
+ry=0,
+rz=0
+
+rotateX4x4Mat(modelMatrix,modelMatrix,rx)
+rotateY4x4Mat(modelMatrix,modelMatrix,ry)
+rotateZ4x4Mat(modelMatrix,modelMatrix,rz)
+
+gl.uniformMatrix4fv(modelMatrixLocation, false, modelMatrix);
+
+//1st param: type of primitive being drawn
+//2nd param: starting vertex(often kept as 0)
+//3rd param: amount of vertices
+gl.drawElements(gl.TRIANGLES, index.length, gl.UNSIGNED_SHORT, 0) */
+
+gl.enable(gl.CULL_FACE)
+gl.enable(gl.DEPTH_TEST)
+
+
+//this part below is optional! these features are the default settings
+//it's unlikely you'll need to use settings other than these
+
+gl.cullFace(gl.BACK)
+gl.depthFunc(gl.LEQUAL)
+
+//fov: field of view in degrees
+//aspect: canvas width divided by height
+//zn: nearest distance camera can render
+//zf: farthest distance camera can render
+//make sure zn is not 0 and zf is not a giant number(1,000 is often fine)!
+//limiting the distance you render and help with performance
+
+function perspectiveMat(fov,aspect,zn,zf){
+    
+    let f=Math.tan(1.57079632679-fov*0.008726646),
+    rangeInv=1/(zn-zf)
+    
+    return new Float32Array([
+    f/aspect,0,0,0,
+    0,f,0,0,
+    0,0,(zn+zf)*rangeInv,-1,
+    0,0,zn*zf*rangeInv*2,0
+    ])
+}
+
+//let projectionMatrix=perspectiveMat(60,canvas.width/canvas.height,0.1,1000)
+let projectionMatrix;
+resizeCanvas();
+
+/* Animation */
+let dt,then=0,time=0
+let fpsElem = document.getElementById('fps');
+
+function loop(now){
+    
+    dt=(now-then)*0.001
+    time+=dt
+    
+    gl.clearColor(0,0,0,1)
+    gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT)
+    
+    let modelMatrix=new Float32Array([
+    
+    1,0,0,0,
+    0,1,0,0,
+    0,0,1,0,
+    0,0,0,1
+    ])
+    
+    let rx=time*0.1,
+    ry=time,
+    rz=0
+
+    translate4x4Mat(modelMatrix,modelMatrix,0,0,-3)
+    
+    rotateX4x4Mat(modelMatrix,modelMatrix,rx)
+    rotateY4x4Mat(modelMatrix,modelMatrix,ry)
+    rotateZ4x4Mat(modelMatrix,modelMatrix,rz)
+
+    //matrix multiplication isn't commutative! mat1*mat2 != mat2*mat1
+    //switch the "projectionMatrix" and "modelMatrix" multiplication around and stuff will break!
+    mult4x4Mat(modelMatrix,projectionMatrix,modelMatrix)
+    
+    gl.uniformMatrix4fv(modelMatrixLocation,false,modelMatrix)
+    
+    gl.drawElements(gl.TRIANGLES,index.length,gl.UNSIGNED_SHORT,0)
+    
+    // Calculate FPS
+    fps = 1 / dt;
+    fpsElem.textContent = 'FPS: ' + fps.toFixed(1);
+    
+    then=now
+    window.requestAnimationFrame(loop)
+}
+
+loop(0)
+
+window.addEventListener('resize', resizeCanvas);
