@@ -504,7 +504,7 @@ var projectionMatrix;
 resizeCanvas();
 
 /* Animation */
-var dt,then=0,time=0
+var dt,then=0,time=0,fps=0;
 var fpsElem = document.getElementById('fps');
 
 function loop(now){
